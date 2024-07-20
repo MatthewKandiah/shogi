@@ -29,12 +29,18 @@ func main() {
 	}
 
 	e := echo.New()
+
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello world!")
 	})
 
 	profileController := controller.ProfileController{Db: db}
 	e.GET("/profile/:id", profileController.HandleShow)
+
+	signInController := controller.SignInController{Db: db}
+	e.GET("sign-in", signInController.HandleSignIn)
+	e.POST("sign-in/authenticate", signInController.HandleAuthentication)
+
 	e.Logger.Fatal(e.Start(":3000"))
 }
 
@@ -47,17 +53,17 @@ func fileExists(path string) bool {
 }
 
 func initialiseDb(db *sql.DB) error {
-	_, err := db.Exec("CREATE TABLE users (id TEXT, displayName TEXT);")
+	_, err := db.Exec("CREATE TABLE users (id TEXT, userName TEXT, password TEXT);")
 	if err != nil {
 		return err
 	}
 
 	// temporary test data
-	_, err = db.Exec("INSERT INTO users (id, displayName) VALUES ('1', 'Matthew')")
+	_, err = db.Exec("INSERT INTO users (id, userName, password) VALUES ('1', 'Matthew', 'password')")
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("INSERT INTO users (id, displayName) VALUES ('2', 'Thomas')")
+	_, err = db.Exec("INSERT INTO users (id, userName, password) VALUES ('2', 'Thomas', 'pw')")
 	if err != nil {
 		return err
 	}

@@ -13,13 +13,13 @@ type ProfileController struct {
 
 func(pc ProfileController) HandleShow(c echo.Context) error {
 	id := c.Param("id")
-	row := pc.Db.QueryRow("SELECT displayName FROM users WHERE id = ?", id)
+	row := pc.Db.QueryRow("SELECT userName FROM users WHERE id = ?", id)
 	var (
-		displayName string
+		userName string
 	)
-	err := row.Scan(&displayName)
+	err := row.Scan(&userName)
 	if err != nil {
-		displayName = "Not found"
+		userName = "Not found"
 	}
-	return profile.ProfilePage(id, displayName).Render(c.Request().Context(), c.Response())
+	return profile.ProfilePage(id, userName).Render(c.Request().Context(), c.Response())
 }
