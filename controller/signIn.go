@@ -2,7 +2,6 @@ package controller
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 
 	signin "github.com/MatthewKandiah/shogi/view/signIn"
@@ -20,8 +19,6 @@ func (sc SignInController) HandleSignIn(c echo.Context) error {
 func (sc SignInController) HandleAuthentication(c echo.Context) error {
 	userName := c.FormValue("userName")
 	password := c.FormValue("password")
-	fmt.Printf("user trying to sign in = %s\n", userName)
-	fmt.Printf("password they are using = %s\n", password)
 
 	row := sc.Db.QueryRow("SELECT password FROM users WHERE userName = ?", userName)
 	var (
@@ -29,13 +26,12 @@ func (sc SignInController) HandleAuthentication(c echo.Context) error {
 	)
 	err := row.Scan(&dbPassword)
 	if err != nil {
-		return err
+		return c.HTML(http.StatusOK, "<h1>Failed! User doesn't exist</h1><br><a href=\"/sign-in\">Try again</a>")
 	}
 
 	if password == dbPassword {
-		fmt.Printf("Successful authentication UN=%s PW=%s DPW=%s\n", userName, password, dbPassword)
+		return c.HTML(http.StatusOK, "<h1>Success!</h1>")
 	} else {
-		fmt.Printf("Failed authentication UN=%s PW=%s DPW=%s\n", userName, password, dbPassword)
+		return c.HTML(http.StatusOK, "<h1>Failed! Incorrect Password</h1><br><a href=\"/sign-in\">Try again</a>")
 	}
-	return c.HTML(http.StatusNoContent, "")
 }
