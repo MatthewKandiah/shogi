@@ -2,17 +2,19 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 
-	"github.com/MatthewKandiah/shogi/controller"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
-
-	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const dbPath = "./shogi.db"
+
+const BCRYPT_STRENGTH = 10
 
 func main() {
 	dbFileAlreadyExisted := fileExists(dbPath)
@@ -28,20 +30,12 @@ func main() {
 		}
 	}
 
-	e := echo.New()
+	// TODO - write a POST wrapper
+	http.HandleFunc("/register", registerUserHandler(db))
 
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello world!")
-	})
-
-	profileController := controller.ProfileController{Db: db}
-	e.GET("/profile/:id", profileController.HandleShow)
-
-	signInController := controller.SignInController{Db: db}
-	e.GET("sign-in", signInController.HandleSignIn)
-	e.POST("sign-in/authenticate", signInController.HandleAuthentication)
-
-	e.Logger.Fatal(e.Start(":3000"))
+	// TODO - update to use TLS for https
+	// TODO - extract port to env variable
+	log.Fatal(http.ListenAndServe(":3000", nil))
 }
 
 func fileExists(path string) bool {
@@ -52,18 +46,76 @@ func fileExists(path string) bool {
 	return true
 }
 
+// TODO - wrapper to pass a db in and return a HttpHandler function
+func registerUserHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		userName := r.Form.Get("username")
+		password := r.Form.Get("password")
+		// TODO - strip trailing whitespace from username to avoid blank username
+		if userName == "" || password == "" {
+			fmt.Println("Failed to register user because name or password not provided")
+			return
+		}
+		// TODO - wrap in transaction
+		row := db.QueryRow("SELECT username, id FROM users WHERE username = ?", userName)
+		var existingUserId string
+		var existingUsername string
+		err = row.Scan(&existingUserId, &existingUsername)
+		if err == nil {
+			fmt.Println("Failed to register, username already taken")
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		if err != sql.ErrNoRows{
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		userId := uuid.New()
+		fmt.Printf("new userId generated: %s\n", userId)
+		_, err = db.Exec("INSERT INTO users (id, userName) VALUES (?, ?)", userId, userName)
+		if err != nil {
+			fmt.Println("Failed to insert user")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("Successfully inserted user")
+		encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), BCRYPT_STRENGTH)
+		if err != nil {
+			fmt.Println("Failed to encrypt password")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("Successfully encrypted password")
+		_, err = db.Exec("INSERT INTO passwords (userId, password) VALUES (?, ?)", userId, encryptedPassword)
+		if err != nil {
+			fmt.Println("Failed to insert password")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("Successfully inserted password")
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func initialiseDb(db *sql.DB) error {
-	_, err := db.Exec("CREATE TABLE users (id TEXT, userName TEXT, password TEXT);")
+	_, err := db.Exec("CREATE TABLE users (id TEXT, userName TEXT);")
 	if err != nil {
 		return err
 	}
 
-	// temporary test data
-	_, err = db.Exec("INSERT INTO users (id, userName, password) VALUES ('1', 'Matthew', 'password')")
+	_, err = db.Exec("CREATE TABLE sessions (userId TEXT, sessionId TEXT, expiryTime TEXT);")
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("INSERT INTO users (id, userName, password) VALUES ('2', 'Thomas', 'pw')")
+
+	_, err = db.Exec("CREATE TABLE passwords (userId TEXT, password TEXT);")
 	if err != nil {
 		return err
 	}
