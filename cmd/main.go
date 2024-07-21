@@ -33,7 +33,8 @@ func main() {
 
 	// TODO - write a POST wrapper
 	http.HandleFunc("/register", registerUserHandler(db))
-	http.HandleFunc("/sign-in", registerSignInHandler(db))
+	http.HandleFunc("/sign-in", signInHandler(db))
+	http.HandleFunc("/sign-out", signOutHandler(db))
 
 	// TODO - update to use TLS for https
 	// TODO - extract port to env variable
@@ -78,7 +79,7 @@ func registerUserHandler(db *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
-		if err != sql.ErrNoRows{
+		if err != sql.ErrNoRows {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -110,10 +111,10 @@ func registerUserHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func registerSignInHandler(db *sql.DB) http.HandlerFunc {
+func signInHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle sign in")
-		err := r.ParseForm() 
+		err := r.ParseForm()
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -153,6 +154,55 @@ func registerSignInHandler(db *sql.DB) http.HandlerFunc {
 		userIdCookie := http.Cookie{Name: "userId", Value: userId}
 		http.SetCookie(w, &sessionCookie)
 		http.SetCookie(w, &userIdCookie)
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func signOutHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Handle sign out")
+		sessionCookie, err := r.Cookie("session")
+		if err != nil {
+			fmt.Println("Did not find a session cookie")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		userIdCookie, err := r.Cookie("userId")
+		if err != nil {
+			fmt.Println("Did not find a userId")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		res, err := db.Exec("DELETE FROM sessions WHERE userId = ? AND sessionId = ?", userIdCookie.Value, sessionCookie.Value)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rowsAffected, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		fmt.Printf("Deleted %d rows\n", rowsAffected)
+		updatedSessionCookie := http.Cookie{
+			Name:   "session",
+			Value:  "",
+			MaxAge: -1,
+		}
+		updatedUserIdCookie := http.Cookie{
+			Name:   "userId",
+			Value:  "",
+			MaxAge: -1,
+		}
+		http.SetCookie(w, &updatedSessionCookie)
+		http.SetCookie(w, &updatedUserIdCookie)
+		if rowsAffected > 1 {
+			fmt.Printf("Unexpectedly deleted %d rows, expected 1\n", rowsAffected)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 	}
 }
