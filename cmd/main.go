@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
@@ -32,6 +33,7 @@ func main() {
 
 	// TODO - write a POST wrapper
 	http.HandleFunc("/register", registerUserHandler(db))
+	http.HandleFunc("/sign-in", registerSignInHandler(db))
 
 	// TODO - update to use TLS for https
 	// TODO - extract port to env variable
@@ -47,11 +49,13 @@ func fileExists(path string) bool {
 }
 
 // TODO - wrapper to pass a db in and return a HttpHandler function
-func registerUserHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+func registerUserHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("handle register user")
 		err := r.ParseForm()
 		if err != nil {
 			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
@@ -60,10 +64,12 @@ func registerUserHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request
 		// TODO - strip trailing whitespace from username to avoid blank username
 		if userName == "" || password == "" {
 			fmt.Println("Failed to register user because name or password not provided")
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		// TODO - wrap in transaction
-		row := db.QueryRow("SELECT username, id FROM users WHERE username = ?", userName)
+		// TODO - replace with SQL COUNT
+		row := db.QueryRow("SELECT id, username FROM users WHERE username = ?", userName)
 		var existingUserId string
 		var existingUsername string
 		err = row.Scan(&existingUserId, &existingUsername)
@@ -100,6 +106,53 @@ func registerUserHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request
 			return
 		}
 		fmt.Println("Successfully inserted password")
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func registerSignInHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("handle sign in")
+		err := r.ParseForm() 
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		userName := r.Form.Get("username")
+		password := r.Form.Get("password")
+		row := db.QueryRow("SELECT id FROM users WHERE userName = ?", userName)
+		var userId string
+		err = row.Scan(&userId)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		row = db.QueryRow("SELECT password FROM passwords WHERE userId = ?", userId)
+		var dbPassword string
+		err = row.Scan(&dbPassword)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(password)) != nil {
+			fmt.Println("Passwords don't match")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		fmt.Println("Passwords matched")
+		sessionId := uuid.New()
+		sessionDuration := 7 * 24 * 60 * 60 * time.Second // a week
+		expiryTime := time.Now().Add(sessionDuration).Format(time.RFC822)
+		fmt.Printf("expiry time calculated: %s\n", expiryTime)
+		_, err = db.Exec("INSERT INTO sessions (userId, sessionId, expiryTime) VALUES (?, ?, ?)", userId, sessionId, expiryTime)
+		fmt.Println("Succesfully inserted session")
+		sessionCookie := http.Cookie{Name: "session", Value: sessionId.String()}
+		userIdCookie := http.Cookie{Name: "userId", Value: userId}
+		http.SetCookie(w, &sessionCookie)
+		http.SetCookie(w, &userIdCookie)
 		w.WriteHeader(http.StatusOK)
 	}
 }
