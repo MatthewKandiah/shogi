@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/MatthewKandiah/shogi/cmd/dao"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
@@ -25,15 +26,16 @@ func main() {
 	}
 
 	if !dbFileAlreadyExisted {
-		err = initialiseDb(db)
+		err := initialiseDb(db)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
+	usersDao := dao.UsersDao{Db: db}
 
-	// TODO - write a POST wrapper
-	http.HandleFunc("/register", registerUserHandler(db))
-	http.HandleFunc("/sign-in", signInHandler(db))
+	// TODO - write a GET/POST wrapper
+	http.HandleFunc("/register", registerUserHandler(db, usersDao))
+	http.HandleFunc("/sign-in", signInHandler(db, usersDao))
 	http.HandleFunc("/sign-out", signOutHandler(db))
 
 	// TODO - update to use TLS for https
@@ -50,7 +52,7 @@ func fileExists(path string) bool {
 }
 
 // TODO - wrapper to pass a db in and return a HttpHandler function
-func registerUserHandler(db *sql.DB) http.HandlerFunc {
+func registerUserHandler(db *sql.DB, usersDao dao.UsersDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle register user")
 		err := r.ParseForm()
@@ -69,11 +71,7 @@ func registerUserHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		// TODO - wrap in transaction
-		// TODO - replace with SQL COUNT
-		row := db.QueryRow("SELECT id, username FROM users WHERE username = ?", userName)
-		var existingUserId string
-		var existingUsername string
-		err = row.Scan(&existingUserId, &existingUsername)
+		_, err = usersDao.GetByUserName(userName)
 		if err == nil {
 			fmt.Println("Failed to register, username already taken")
 			w.WriteHeader(http.StatusConflict)
@@ -84,15 +82,15 @@ func registerUserHandler(db *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		userId := uuid.New()
-		fmt.Printf("new userId generated: %s\n", userId)
-		_, err = db.Exec("INSERT INTO users (id, userName) VALUES (?, ?)", userId, userName)
+		newRow := dao.UsersRow{Id: uuid.New().String(), UserName: userName}
+		err = usersDao.Insert(newRow)
 		if err != nil {
 			fmt.Println("Failed to insert user")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		fmt.Println("Successfully inserted user")
+		// TODO - check how bcrypt works, is this actually sufficiently secure to deploy? 
 		encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), BCRYPT_STRENGTH)
 		if err != nil {
 			fmt.Println("Failed to encrypt password")
@@ -100,7 +98,7 @@ func registerUserHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		fmt.Println("Successfully encrypted password")
-		_, err = db.Exec("INSERT INTO passwords (userId, password) VALUES (?, ?)", userId, encryptedPassword)
+		_, err = db.Exec("INSERT INTO passwords (userId, password) VALUES (?, ?)", newRow.Id, encryptedPassword)
 		if err != nil {
 			fmt.Println("Failed to insert password")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -111,7 +109,7 @@ func registerUserHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func signInHandler(db *sql.DB) http.HandlerFunc {
+func signInHandler(db *sql.DB, usersDao dao.UsersDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle sign in")
 		err := r.ParseForm()
@@ -122,17 +120,16 @@ func signInHandler(db *sql.DB) http.HandlerFunc {
 		}
 		userName := r.Form.Get("username")
 		password := r.Form.Get("password")
-		row := db.QueryRow("SELECT id FROM users WHERE userName = ?", userName)
-		var userId string
-		err = row.Scan(&userId)
+		userRow, err := usersDao.GetByUserName(userName)
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		row = db.QueryRow("SELECT password FROM passwords WHERE userId = ?", userId)
+		userId := userRow.Id
+		passwordRow := db.QueryRow("SELECT password FROM passwords WHERE userId = ?", userId)
 		var dbPassword string
-		err = row.Scan(&dbPassword)
+		err = passwordRow.Scan(&dbPassword)
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -208,7 +205,8 @@ func signOutHandler(db *sql.DB) http.HandlerFunc {
 }
 
 func initialiseDb(db *sql.DB) error {
-	_, err := db.Exec("CREATE TABLE users (id TEXT, userName TEXT);")
+	usersDao := dao.UsersDao{Db: db}
+	err := usersDao.Create()
 	if err != nil {
 		return err
 	}
