@@ -34,11 +34,12 @@ func main() {
 	}
 	usersDao := dao.UsersDao{Db: db}
 	passwordsDao := dao.PasswordsDao{Db: db}
+	sessionsDao := dao.SessionsDao{Db: db}
 
 	// TODO - write a GET/POST wrapper
 	http.HandleFunc("/register", registerUserHandler(usersDao, passwordsDao))
-	http.HandleFunc("/sign-in", signInHandler(db, usersDao, passwordsDao))
-	http.HandleFunc("/sign-out", signOutHandler(db))
+	http.HandleFunc("/sign-in", signInHandler(usersDao, passwordsDao, sessionsDao))
+	http.HandleFunc("/sign-out", signOutHandler(sessionsDao))
 
 	// TODO - update to use TLS for https
 	// TODO - extract port to env variable
@@ -112,7 +113,7 @@ func registerUserHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao) h
 	}
 }
 
-func signInHandler(db *sql.DB, usersDao dao.UsersDao, passwordsDao dao.PasswordsDao) http.HandlerFunc {
+func signInHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao, sessionsDao dao.SessionsDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle sign in")
 		err := r.ParseForm()
@@ -146,7 +147,13 @@ func signInHandler(db *sql.DB, usersDao dao.UsersDao, passwordsDao dao.Passwords
 		sessionDuration := 7 * 24 * 60 * 60 * time.Second // a week
 		expiryTime := time.Now().Add(sessionDuration).Format(time.RFC822)
 		fmt.Printf("expiry time calculated: %s\n", expiryTime)
-		_, err = db.Exec("INSERT INTO sessions (userId, sessionId, expiryTime) VALUES (?, ?, ?)", userId, sessionId, expiryTime)
+		sessionsRow := dao.SessionsRow{UserId: userId, SessionId: sessionId.String(), ExpiryTime: expiryTime}
+		err = sessionsDao.Insert(sessionsRow)
+		if err != nil {
+			fmt.Println("Failed to insert into sessions table")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		fmt.Println("Succesfully inserted session")
 		sessionCookie := http.Cookie{Name: "session", Value: sessionId.String()}
 		userIdCookie := http.Cookie{Name: "userId", Value: userId}
@@ -156,7 +163,7 @@ func signInHandler(db *sql.DB, usersDao dao.UsersDao, passwordsDao dao.Passwords
 	}
 }
 
-func signOutHandler(db *sql.DB) http.HandlerFunc {
+func signOutHandler(sessionsDao dao.SessionsDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Handle sign out")
 		sessionCookie, err := r.Cookie("session")
@@ -171,7 +178,7 @@ func signOutHandler(db *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		res, err := db.Exec("DELETE FROM sessions WHERE userId = ? AND sessionId = ?", userIdCookie.Value, sessionCookie.Value)
+		res, err := sessionsDao.Delete(userIdCookie.Value, sessionCookie.Value)
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -207,17 +214,19 @@ func signOutHandler(db *sql.DB) http.HandlerFunc {
 
 func initialiseDb(db *sql.DB) error {
 	usersDao := dao.UsersDao{Db: db}
+	sessionsDao := dao.SessionsDao{Db: db}
+	passwordsDao := dao.PasswordsDao{Db: db}
+
 	err := usersDao.Create()
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec("CREATE TABLE sessions (userId TEXT, sessionId TEXT, expiryTime TEXT);")
+	err = sessionsDao.Create()
 	if err != nil {
 		return err
 	}
 
-	passwordsDao := dao.PasswordsDao{Db: db}
 	err = passwordsDao.Create()
 	if err != nil {
 		return err
