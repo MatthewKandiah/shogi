@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/MatthewKandiah/shogi/cmd/dao"
+	"github.com/MatthewKandiah/shogi/dao"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
@@ -26,16 +26,18 @@ func main() {
 	}
 
 	if !dbFileAlreadyExisted {
+		// TODO pass in daos instead of db
 		err := initialiseDb(db)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 	usersDao := dao.UsersDao{Db: db}
+	passwordsDao := dao.PasswordsDao{Db: db}
 
 	// TODO - write a GET/POST wrapper
-	http.HandleFunc("/register", registerUserHandler(db, usersDao))
-	http.HandleFunc("/sign-in", signInHandler(db, usersDao))
+	http.HandleFunc("/register", registerUserHandler(usersDao, passwordsDao))
+	http.HandleFunc("/sign-in", signInHandler(db, usersDao, passwordsDao))
 	http.HandleFunc("/sign-out", signOutHandler(db))
 
 	// TODO - update to use TLS for https
@@ -52,7 +54,7 @@ func fileExists(path string) bool {
 }
 
 // TODO - wrapper to pass a db in and return a HttpHandler function
-func registerUserHandler(db *sql.DB, usersDao dao.UsersDao) http.HandlerFunc {
+func registerUserHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle register user")
 		err := r.ParseForm()
@@ -98,7 +100,8 @@ func registerUserHandler(db *sql.DB, usersDao dao.UsersDao) http.HandlerFunc {
 			return
 		}
 		fmt.Println("Successfully encrypted password")
-		_, err = db.Exec("INSERT INTO passwords (userId, password) VALUES (?, ?)", newRow.Id, encryptedPassword)
+		passwordsRow := dao.PasswordsRow{UserId: newRow.Id, Password: string(encryptedPassword)}
+		err = passwordsDao.Insert(passwordsRow)
 		if err != nil {
 			fmt.Println("Failed to insert password")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -109,7 +112,7 @@ func registerUserHandler(db *sql.DB, usersDao dao.UsersDao) http.HandlerFunc {
 	}
 }
 
-func signInHandler(db *sql.DB, usersDao dao.UsersDao) http.HandlerFunc {
+func signInHandler(db *sql.DB, usersDao dao.UsersDao, passwordsDao dao.PasswordsDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle sign in")
 		err := r.ParseForm()
@@ -127,15 +130,13 @@ func signInHandler(db *sql.DB, usersDao dao.UsersDao) http.HandlerFunc {
 			return
 		}
 		userId := userRow.Id
-		passwordRow := db.QueryRow("SELECT password FROM passwords WHERE userId = ?", userId)
-		var dbPassword string
-		err = passwordRow.Scan(&dbPassword)
+		passwordRow, err := passwordsDao.Get(userId)
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		if bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(password)) != nil {
+		if bcrypt.CompareHashAndPassword([]byte(passwordRow.Password), []byte(password)) != nil {
 			fmt.Println("Passwords don't match")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -216,7 +217,8 @@ func initialiseDb(db *sql.DB) error {
 		return err
 	}
 
-	_, err = db.Exec("CREATE TABLE passwords (userId TEXT, password TEXT);")
+	passwordsDao := dao.PasswordsDao{Db: db}
+	err = passwordsDao.Create()
 	if err != nil {
 		return err
 	}

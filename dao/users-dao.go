@@ -1,3 +1,4 @@
+// TODO - move out of cmd/
 package dao
 
 import "database/sql"
@@ -10,9 +11,6 @@ type UsersRow struct {
 	Id string
 	UserName string
 }
-
-// TODO - consider a dao interface with these methods on
-//		not sure if actually helpful, wait until we find a method that takes any dao
 
 func (d UsersDao) Create() error {
 	_, err := d.Db.Exec("CREATE TABLE users (id TEXT, userName TEXT);")
