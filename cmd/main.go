@@ -25,16 +25,20 @@ func main() {
 		log.Fatal(err)
 	}
 
+	usersDao := dao.UsersDao{Db: db}
+	passwordsDao := dao.PasswordsDao{Db: db}
+	sessionsDao := dao.SessionsDao{Db: db}
 	if !dbFileAlreadyExisted {
-		// TODO pass in daos instead of db
-		err := initialiseDb(db)
+		daos := []dao.Dao{
+			usersDao,
+			passwordsDao,
+			sessionsDao,
+		}
+		err := initialiseDb(daos)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
-	usersDao := dao.UsersDao{Db: db}
-	passwordsDao := dao.PasswordsDao{Db: db}
-	sessionsDao := dao.SessionsDao{Db: db}
 
 	// TODO - write a GET/POST wrapper
 	http.HandleFunc("/register", registerUserHandler(usersDao, passwordsDao))
@@ -93,7 +97,7 @@ func registerUserHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao) h
 			return
 		}
 		fmt.Println("Successfully inserted user")
-		// TODO - check how bcrypt works, is this actually sufficiently secure to deploy? 
+		// TODO - check how bcrypt works, is this actually sufficiently secure to deploy?
 		encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), BCRYPT_STRENGTH)
 		if err != nil {
 			fmt.Println("Failed to encrypt password")
@@ -212,25 +216,12 @@ func signOutHandler(sessionsDao dao.SessionsDao) http.HandlerFunc {
 	}
 }
 
-func initialiseDb(db *sql.DB) error {
-	usersDao := dao.UsersDao{Db: db}
-	sessionsDao := dao.SessionsDao{Db: db}
-	passwordsDao := dao.PasswordsDao{Db: db}
-
-	err := usersDao.Create()
-	if err != nil {
-		return err
+func initialiseDb(daos []dao.Dao) error {
+	for _, dao := range daos {
+		err := dao.Create()
+		if err != nil {
+			return err
+		}
 	}
-
-	err = sessionsDao.Create()
-	if err != nil {
-		return err
-	}
-
-	err = passwordsDao.Create()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
