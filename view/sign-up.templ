@@ -1,0 +1,16 @@
+package view
+
+templ SignUpView() {
+	@Page() {
+		<h1>Sign Up</h1>
+		<form action="/sign-up" method="POST">
+			<label>Username: </label>
+			<input type="text" name="userName"/>
+			<br/>
+			<label>Password: </label>
+			<input type="text" name="password"/>
+			<br/>
+			<input type="submit" value="Submit"/>
+		</form>
+	}
+}

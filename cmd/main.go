@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/MatthewKandiah/shogi/dao"
+	"github.com/MatthewKandiah/shogi/view"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
@@ -40,8 +43,9 @@ func main() {
 		}
 	}
 
-	// TODO - write a GET/POST wrapper
-	http.HandleFunc("/register", registerUserHandler(usersDao, passwordsDao))
+	http.HandleFunc("/", indexHandler())
+	http.HandleFunc("/home", homeHandler())
+	http.HandleFunc("/sign-up", registerUserHandler(usersDao, passwordsDao))
 	http.HandleFunc("/sign-in", signInHandler(usersDao, passwordsDao, sessionsDao))
 	http.HandleFunc("/sign-out", signOutHandler(sessionsDao))
 
@@ -58,7 +62,30 @@ func fileExists(path string) bool {
 	return true
 }
 
-// TODO - wrapper to pass a db in and return a HttpHandler function
+// TODO - if cookies for valid session exist, redirect to home
+func indexHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("handle index")
+		ctx := context.Background()
+		err := view.IndexView().Render(ctx, w)
+		if err != nil {
+			log.Fatal("Error serving index page")
+		}
+	}
+}
+
+// TODO - require valid session
+func homeHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("handle home")
+		ctx := context.Background()
+		err := view.HomeView().Render(ctx, w)
+		if err != nil {
+			log.Fatal("Error serving home page")
+		}
+	}
+}
+
 func registerUserHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle register user")
@@ -69,12 +96,16 @@ func registerUserHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao) h
 			return
 		}
 
-		userName := r.Form.Get("username")
+		userName := strings.TrimSpace(r.Form.Get("userName"))
 		password := r.Form.Get("password")
-		// TODO - strip trailing whitespace from username to avoid blank username
+		fmt.Printf("un: %s, pw: %s\n", userName, password)
+		ctx := context.Background()
 		if userName == "" || password == "" {
-			fmt.Println("Failed to register user because name or password not provided")
-			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Println("Show sign up form")
+			err = view.SignUpView().Render(ctx, w)
+			if err != nil {
+				log.Fatal(err)
+			}
 			return
 		}
 		// TODO - wrap in transaction
@@ -113,7 +144,10 @@ func registerUserHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao) h
 			return
 		}
 		fmt.Println("Successfully inserted password")
-		w.WriteHeader(http.StatusOK)
+		err = view.SignInView().Render(ctx, w)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -128,6 +162,14 @@ func signInHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao, session
 		}
 		userName := r.Form.Get("username")
 		password := r.Form.Get("password")
+		ctx := context.Background()
+		if userName == "" || password == "" {
+			err = view.SignInView().Render(ctx, w)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
 		userRow, err := usersDao.GetByUserName(userName)
 		if err != nil {
 			fmt.Println(err)
@@ -163,7 +205,10 @@ func signInHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao, session
 		userIdCookie := http.Cookie{Name: "userId", Value: userId}
 		http.SetCookie(w, &sessionCookie)
 		http.SetCookie(w, &userIdCookie)
-		w.WriteHeader(http.StatusOK)
+		err = view.HomeView().Render(ctx, w)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 

@@ -1,4 +1,3 @@
-// TODO - move out of cmd/
 package dao
 
 import "database/sql"
