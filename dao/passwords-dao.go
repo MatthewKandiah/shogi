@@ -7,17 +7,18 @@ type PasswordsDao struct {
 }
 
 type PasswordsRow struct {
-	UserId string
+	UserId   string
 	Password string
 }
 
 func (d PasswordsDao) Create() error {
-	_, err := d.Db.Exec("CREATE TABLE passwords (userId TEXT, passwords TEXT);")
+	_, err := d.Db.Exec("CREATE TABLE passwords (userId TEXT, password TEXT);")
 	return err
 }
 
+// this is returning an error even though it appears to actually insert the row
 func (d PasswordsDao) Insert(row PasswordsRow) error {
-	_, err := d.Db.Exec("INSERT INTO passwords (userId, password) VALUES (?, ?)",row.UserId, row.Password)
+	_, err := d.Db.Exec("INSERT INTO passwords (userId, password) VALUES (?, ?)", row.UserId, row.Password)
 	return err
 }
 

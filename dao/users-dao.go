@@ -22,7 +22,7 @@ func (d UsersDao) Insert(r UsersRow) error {
 }
 
 func (d UsersDao) GetByUserName(un string) (*UsersRow, error) {
-	row := d.Db.QueryRow("SELECT (id, userName) FROM users WHERE userName = ?", un)
+	row := d.Db.QueryRow("SELECT id, userName FROM users WHERE userName = ?", un)
 	var id string
 	var name string
 	err := row.Scan(&id, &name)

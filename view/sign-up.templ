@@ -1,16 +1,26 @@
 package view
 
-templ SignUpView() {
+templ SignUpPage() {
 	@Page() {
 		<h1>Sign Up</h1>
-		<form action="/sign-up" method="POST">
-			<label>Username: </label>
-			<input type="text" name="userName"/>
-			<br/>
-			<label>Password: </label>
-			<input type="text" name="password"/>
-			<br/>
-			<input type="submit" value="Submit"/>
-		</form>
+		@SignUpFormSnippet()
 	}
+}
+
+templ SignUpSuccessSnippet() {
+	<p>Sign up successful!</p>
+	<br/>
+	<a href="/sign-in">Sign In</a>
+}
+
+templ SignUpFormSnippet() {
+	<form action="/sign-up" method="POST" hx-swap="outerHTML">
+		<label>Username: </label>
+		<input type="text" name="userName"/>
+		<br/>
+		<label>Password: </label>
+		<input type="text" name="password"/>
+		<br/>
+		<input type="submit" value="Submit"/>
+	</form>
 }
