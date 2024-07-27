@@ -43,6 +43,7 @@ func main() {
 		}
 	}
 
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.HandleFunc("/", indexHandler())
 	http.HandleFunc("/home", homeHandler())
 	http.HandleFunc("/sign-up", signUpHandler(usersDao, passwordsDao))
