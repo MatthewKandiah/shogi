@@ -162,60 +162,71 @@ func signUpHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao) http.Ha
 func signInHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao, sessionsDao dao.SessionsDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle sign in")
-		err := r.ParseForm()
-		if err != nil {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		userName := r.Form.Get("username")
-		password := r.Form.Get("password")
 		ctx := context.Background()
-		if userName == "" || password == "" {
-			err = view.SignInView().Render(ctx, w)
+		if r.Method == http.MethodGet {
+			fmt.Println("handle GET")
+			err := view.SignInPage().Render(ctx, w)
 			if err != nil {
 				log.Fatal(err)
 			}
-			return
-		}
-		userRow, err := usersDao.GetByUserName(userName)
-		if err != nil {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		userId := userRow.Id
-		passwordRow, err := passwordsDao.Get(userId)
-		if err != nil {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if bcrypt.CompareHashAndPassword([]byte(passwordRow.Password), []byte(password)) != nil {
-			fmt.Println("Passwords don't match")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		fmt.Println("Passwords matched")
-		sessionId := uuid.New()
-		sessionDuration := 7 * 24 * 60 * 60 * time.Second // a week
-		expiryTime := time.Now().Add(sessionDuration).Format(time.RFC822)
-		fmt.Printf("expiry time calculated: %s\n", expiryTime)
-		sessionsRow := dao.SessionsRow{UserId: userId, SessionId: sessionId.String(), ExpiryTime: expiryTime}
-		err = sessionsDao.Insert(sessionsRow)
-		if err != nil {
-			fmt.Println("Failed to insert into sessions table")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		fmt.Println("Succesfully inserted session")
-		sessionCookie := http.Cookie{Name: "session", Value: sessionId.String()}
-		userIdCookie := http.Cookie{Name: "userId", Value: userId}
-		http.SetCookie(w, &sessionCookie)
-		http.SetCookie(w, &userIdCookie)
-		err = view.HomeView().Render(ctx, w)
-		if err != nil {
-			log.Fatal(err)
+		} else if r.Method == http.MethodPost {
+			err := r.ParseForm()
+			if err != nil {
+				fmt.Println(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			userName := r.Form.Get("userName")
+			password := r.Form.Get("password")
+			if userName == "" || password == "" {
+				fmt.Println("Bad request - missing username or password")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			userRow, err := usersDao.GetByUserName(userName)
+			if err != nil {
+				fmt.Println("Failed to find user")
+				fmt.Println(err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			userId := userRow.Id
+			passwordRow, err := passwordsDao.Get(userId)
+			if err != nil {
+				fmt.Println("Failed to find password")
+				fmt.Println(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if bcrypt.CompareHashAndPassword([]byte(passwordRow.Password), []byte(password)) != nil {
+				fmt.Println("Passwords don't match")
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			fmt.Println("Passwords matched")
+			sessionId := uuid.New()
+			sessionDuration := 7 * 24 * 60 * 60 * time.Second // a week
+			expiryTime := time.Now().Add(sessionDuration).Format(time.RFC822)
+			fmt.Printf("expiry time calculated: %s\n", expiryTime)
+			sessionsRow := dao.SessionsRow{UserId: userId, SessionId: sessionId.String(), ExpiryTime: expiryTime}
+			err = sessionsDao.Insert(sessionsRow)
+			if err != nil {
+				fmt.Println("Failed to insert into sessions table")
+				fmt.Println(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			fmt.Println("Succesfully inserted session")
+			sessionCookie := http.Cookie{Name: "session", Value: sessionId.String()}
+			userIdCookie := http.Cookie{Name: "userId", Value: userId}
+			http.SetCookie(w, &sessionCookie)
+			http.SetCookie(w, &userIdCookie)
+			err = view.SignInSuccessSnippet().Render(ctx, w)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			log.Fatal("Unexpected http method - " + r.Method)
 		}
 	}
 }

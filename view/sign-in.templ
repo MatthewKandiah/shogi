@@ -1,16 +1,26 @@
 package view
 
-templ SignInView() {
+templ SignInPage() {
 	@Page() {
 		<h1>Sign In</h1>
-		<form action="/sign-in" method="POST">
-			<label>Username: </label>
-			<input type="text" name="userName"/>
-			<br/>
-			<label>Password: </label>
-			<input type="text" name="password"/>
-			<br/>
-			<input type="submit" value="Submit"/>
-		</form>
+		@SignInFormSnippet()
 	}
+}
+
+templ SignInSuccessSnippet() {
+	<p>Sign in successful</p>
+	<br/>
+	<a href="/home">Go to Home</a>
+}
+
+templ SignInFormSnippet() {
+	<form action="/sign-in" method="POST" hx-swap="outerHTML">
+		<label>Username: </label>
+		<input type="text" name="userName"/>
+		<br/>
+		<label>Password: </label>
+		<input type="text" name="password"/>
+		<br/>
+		<input type="submit" value="Submit"/>
+	</form>
 }
