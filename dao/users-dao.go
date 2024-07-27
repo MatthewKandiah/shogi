@@ -21,6 +21,18 @@ func (d UsersDao) Insert(r UsersRow) error {
 	return err
 }
 
+func (d UsersDao) Get(userId string) (*UsersRow, error) {
+	row := d.Db.QueryRow("SELECT id, userName FROM users WHERE id = ?", userId)
+	var id string
+	var name string
+	err := row.Scan(&id, &name)
+	if err != nil {
+		return nil, err
+	}
+	result := UsersRow{id, name}
+	return &result, nil
+}
+
 func (d UsersDao) GetByUserName(un string) (*UsersRow, error) {
 	row := d.Db.QueryRow("SELECT id, userName FROM users WHERE userName = ?", un)
 	var id string

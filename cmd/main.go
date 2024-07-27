@@ -45,7 +45,7 @@ func main() {
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.HandleFunc("/", indexHandler())
-	http.HandleFunc("/home", homeHandler())
+	http.HandleFunc("/home", homeHandler(usersDao))
 	http.HandleFunc("/sign-up", signUpHandler(usersDao, passwordsDao))
 	http.HandleFunc("/sign-in", signInHandler(usersDao, passwordsDao, sessionsDao))
 	http.HandleFunc("/sign-out", signOutHandler(sessionsDao))
@@ -76,11 +76,23 @@ func indexHandler() http.HandlerFunc {
 }
 
 // TODO - require valid session
-func homeHandler() http.HandlerFunc {
+func homeHandler(usersDao dao.UsersDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle home")
 		ctx := context.Background()
-		err := view.HomeView().Render(ctx, w)
+		userIdCookie, err := r.Cookie("userId")
+		var userNameString string
+		if err != nil {
+			userNameString = "ERROR - you aren't logged in?!"
+		} else {
+			usersRow, err := usersDao.Get(userIdCookie.Value)
+			if err != nil {
+				userNameString = "ERROR = you aren't in the users table?!"
+			} else {
+				userNameString = usersRow.UserName
+			}
+		}
+		err = view.HomeView(userNameString).Render(ctx, w)
 		if err != nil {
 			log.Fatal("Error serving home page")
 		}
