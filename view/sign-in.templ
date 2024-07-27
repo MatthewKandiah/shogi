@@ -20,7 +20,7 @@ templ SignInSuccessSnippet() {
 }
 
 templ SignInFormSnippet() {
-	<form action="/sign-in" method="POST" hx-swap="innerHTML">
+	<form hx-post="/sign-in" hx-swap="outerHTML">
 		<label>Username: </label>
 		<input type="text" name="userName"/>
 		<br/>

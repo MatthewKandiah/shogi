@@ -106,7 +106,7 @@ func SignInFormSnippet() templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form action=\"/sign-in\" method=\"POST\" hx-swap=\"innerHTML\"><label>Username: </label> <input type=\"text\" name=\"userName\"><br><label>Password: </label> <input type=\"text\" name=\"password\"><br><input type=\"submit\" value=\"Submit\"></form>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<form hx-post=\"/sign-in\" hx-swap=\"outerHTML\"><label>Username: </label> <input type=\"text\" name=\"userName\"><br><label>Password: </label> <input type=\"text\" name=\"password\"><br><input type=\"submit\" value=\"Submit\"></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
