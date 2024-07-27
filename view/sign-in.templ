@@ -1,5 +1,11 @@
 package view
 
+const (
+	SignInPageView = iota
+	SignInSuccessSnippetView
+	SignInFormSnippetView
+)
+
 templ SignInPage() {
 	@Page() {
 		<h1>Sign In</h1>
@@ -14,7 +20,7 @@ templ SignInSuccessSnippet() {
 }
 
 templ SignInFormSnippet() {
-	<form action="/sign-in" method="POST" hx-swap="outerHTML">
+	<form action="/sign-in" method="POST" hx-swap="innerHTML">
 		<label>Username: </label>
 		<input type="text" name="userName"/>
 		<br/>
