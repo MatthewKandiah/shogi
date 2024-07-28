@@ -18,6 +18,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// TODO - pull cookie names out into consts instead of just repeating them everywhere
+
 const DB_PATH = "./shogi.db"
 
 const BCRYPT_STRENGTH = 10
@@ -48,7 +50,7 @@ func main() {
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.HandleFunc("/", indexHandler())
-	http.HandleFunc("/home", homeHandler(usersDao))
+	http.HandleFunc("/home", homeHandler(usersDao, sessionsDao))
 	http.HandleFunc("/sign-up", signUpHandler(usersDao, passwordsDao))
 	http.HandleFunc("/sign-in", signInHandler(usersDao, passwordsDao, sessionsDao))
 	http.HandleFunc("/sign-out", signOutHandler(sessionsDao))
@@ -78,26 +80,31 @@ func indexHandler() http.HandlerFunc {
 	}
 }
 
-// TODO - redirect to sign in if you are not logged in
 func homeHandler(usersDao dao.UsersDao, sessionsDao dao.SessionsDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle home")
 
 		// TODO - pull out a requiresValidSession helper
-		cookieSessionId := valueFromCookie("sessionId", r)
+		cookieSessionId := valueFromCookie("session", r)
 		cookieUserId := valueFromCookie("userId", r)
 		sessionsRow, err := sessionsDao.Get(cookieSessionId)
 		if err != nil {
 			fmt.Println("Couldn't find session in DB")
+			w.Header().Set("Location", "/sign-in")
+			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 		if sessionsRow.UserId != cookieUserId {
 			fmt.Println("User id in cookie and DB do not match")
+			w.Header().Set("Location", "/sign-in")
+			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 		validSession, err := hasValidSession(cookieUserId, cookieSessionId, sessionsRow.ExpiryTime, sessionsDao)
 		if err != nil || !validSession {
 			fmt.Println("Failed to validate session")
+			w.Header().Set("Location", "/sign-in")
+			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 		fmt.Println("Valid session confirmed")
@@ -106,10 +113,12 @@ func homeHandler(usersDao dao.UsersDao, sessionsDao dao.SessionsDao) http.Handle
 		userIdCookie, err := r.Cookie("userId")
 		var userNameString string
 		if err != nil {
+			// TODO - these should probably be switched to asserts
 			userNameString = "ERROR - you aren't logged in?!"
 		} else {
 			usersRow, err := usersDao.Get(userIdCookie.Value)
 			if err != nil {
+			// TODO - these should probably be switched to asserts
 				userNameString = "ERROR = you aren't in the users table?!"
 			} else {
 				userNameString = usersRow.UserName
