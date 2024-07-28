@@ -7,7 +7,7 @@ type UsersDao struct {
 }
 
 type UsersRow struct {
-	Id string
+	Id       string
 	UserName string
 }
 

@@ -118,7 +118,7 @@ func homeHandler(usersDao dao.UsersDao, sessionsDao dao.SessionsDao) http.Handle
 		} else {
 			usersRow, err := usersDao.Get(userIdCookie.Value)
 			if err != nil {
-			// TODO - these should probably be switched to asserts
+				// TODO - these should probably be switched to asserts
 				userNameString = "ERROR = you aren't in the users table?!"
 			} else {
 				userNameString = usersRow.UserName
@@ -347,7 +347,8 @@ func signOutHandler(sessionsDao dao.SessionsDao) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Location", "/sign-in")
+		w.WriteHeader(http.StatusSeeOther)
 	}
 }
 

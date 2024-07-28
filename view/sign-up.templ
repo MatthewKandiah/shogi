@@ -4,13 +4,12 @@ templ SignUpPage() {
 	@Page() {
 		<h1>Sign Up</h1>
 		@SignUpFormSnippet()
+		<a href="/sign-in">Sign In</a>
 	}
 }
 
 templ SignUpSuccessSnippet() {
 	<p>Sign up successful!</p>
-	<br/>
-	<a href="/sign-in">Sign In</a>
 }
 
 templ SignUpFormSnippet() {
