@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,13 +18,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const dbPath = "./shogi.db"
+const DB_PATH = "./shogi.db"
 
 const BCRYPT_STRENGTH = 10
 
+const TIME_FORMAT = time.RFC822
+
 func main() {
-	dbFileAlreadyExisted := fileExists(dbPath)
-	db, err := sql.Open("sqlite3", dbPath)
+	dbFileAlreadyExisted := fileExists(DB_PATH)
+	db, err := sql.Open("sqlite3", DB_PATH)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,10 +78,30 @@ func indexHandler() http.HandlerFunc {
 	}
 }
 
-// TODO - require valid session
-func homeHandler(usersDao dao.UsersDao) http.HandlerFunc {
+// TODO - redirect to sign in if you are not logged in
+func homeHandler(usersDao dao.UsersDao, sessionsDao dao.SessionsDao) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("handle home")
+
+		// TODO - pull out a requiresValidSession helper
+		cookieSessionId := valueFromCookie("sessionId", r)
+		cookieUserId := valueFromCookie("userId", r)
+		sessionsRow, err := sessionsDao.Get(cookieSessionId)
+		if err != nil {
+			fmt.Println("Couldn't find session in DB")
+			return
+		}
+		if sessionsRow.UserId != cookieUserId {
+			fmt.Println("User id in cookie and DB do not match")
+			return
+		}
+		validSession, err := hasValidSession(cookieUserId, cookieSessionId, sessionsRow.ExpiryTime, sessionsDao)
+		if err != nil || !validSession {
+			fmt.Println("Failed to validate session")
+			return
+		}
+		fmt.Println("Valid session confirmed")
+
 		ctx := context.Background()
 		userIdCookie, err := r.Cookie("userId")
 		var userNameString string
@@ -223,7 +246,7 @@ func signInHandler(usersDao dao.UsersDao, passwordsDao dao.PasswordsDao, session
 			fmt.Println("Passwords matched")
 			sessionId := uuid.New()
 			sessionDuration := 7 * 24 * 60 * 60 * time.Second // a week
-			expiryTime := time.Now().Add(sessionDuration).Format(time.RFC822)
+			expiryTime := time.Now().Add(sessionDuration).Format(TIME_FORMAT)
 			fmt.Printf("expiry time calculated: %s\n", expiryTime)
 			sessionsRow := dao.SessionsRow{UserId: userId, SessionId: sessionId.String(), ExpiryTime: expiryTime}
 			err = sessionsDao.Insert(sessionsRow)
@@ -327,4 +350,31 @@ func initialiseDb(daos []dao.Dao) error {
 		}
 	}
 	return nil
+}
+
+func hasValidSession(userId string, sessionId string, expiryTime string, sessionsDao dao.SessionsDao) (bool, error) {
+	dbSessionIds, err := sessionsDao.GetAll(userId)
+	if err != nil {
+		return false, err
+	}
+	matchingIndex := slices.IndexFunc(dbSessionIds, func(sr dao.SessionsRow) bool {
+		return sr.SessionId == sessionId
+	})
+	if matchingIndex == -1 {
+		return false, nil
+	}
+	parsedExpiryTime, err := time.Parse(TIME_FORMAT, expiryTime)
+	if err != nil {
+		return false, nil
+	}
+	isValid := time.Now().Compare(parsedExpiryTime) == -1
+	return isValid, nil
+}
+
+func valueFromCookie(key string, r *http.Request) string {
+	cookie, err := r.Cookie(key)
+	if err != nil {
+		return ""
+	}
+	return cookie.Value
 }
