@@ -4,6 +4,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/MatthewKandiah/shogi/constant"
 	"github.com/MatthewKandiah/shogi/dao"
 )
 
@@ -18,7 +19,7 @@ func HasValidSession(userId string, sessionId string, expiryTime string, session
 	if matchingIndex == -1 {
 		return false, nil
 	}
-	parsedExpiryTime, err := time.Parse(TIME_FORMAT, expiryTime)
+	parsedExpiryTime, err := time.Parse(constant.TIME_FORMAT, expiryTime)
 	if err != nil {
 		return false, nil
 	}

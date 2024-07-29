@@ -22,11 +22,13 @@ func main() {
 	usersDao := dao.UsersDao{Db: db}
 	passwordsDao := dao.PasswordsDao{Db: db}
 	sessionsDao := dao.SessionsDao{Db: db}
+	gamesDao := dao.GamesDao{Db: db}
 	if !dbFileAlreadyExisted {
 		daos := []dao.Dao{
 			usersDao,
 			passwordsDao,
 			sessionsDao,
+			gamesDao,
 		}
 		err := util.InitialiseDb(daos)
 		if err != nil {
