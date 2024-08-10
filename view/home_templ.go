@@ -38,20 +38,20 @@ func HomeView(userName string) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<h1>Home Page</h1><p>Welcome back ")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<h1>Home Page</h1><hr><p>Welcome back ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(userName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/home.templ`, Line: 6, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/home.templ`, Line: 7, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><a href=\"/sign-out\">Sign Out</a>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><canvas id=\"shogi-canvas\" width=\"800\" height=\"600\" style=\"border :1px solid #000000;\"></canvas><hr><a href=\"/sign-out\">Sign Out</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -3,7 +3,10 @@ package view
 templ HomeView(userName string) {
 	@Page() {
 		<h1>Home Page</h1>
+		<hr/>
 		<p>Welcome back {userName}</p>
+		<canvas id="shogi-canvas" width="800" height="600" style="border :1px solid #000000;"/>
+		<hr/>
 		<a href="/sign-out">Sign Out</a>
 	}
 }
