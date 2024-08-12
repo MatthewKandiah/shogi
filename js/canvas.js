@@ -1,8 +1,11 @@
 const canvas = document.getElementById("shogi-canvas")
 const ctx = canvas.getContext("2d");
 
-ctx.fillStyle = "rgb(200 0 0)";
-ctx.fillRect(10, 10, 50, 60);
-
-ctx.fillStyle = "rgb(0 0 200 / 50%)";
-ctx.fillRect(30, 30, 70, 80);
+const imageData = ctx.createImageData(canvas.width, canvas.height);
+for (let i = 0; i < canvas.width * canvas.height; i++) {
+	imageData.data[4 * i] = i/(canvas.width * 2.5) % 256;
+	imageData.data[4 * i + 1] = 0;
+	imageData.data[4 * i + 2] = 0;
+	imageData.data[4 * i + 3] = 255;
+}
+ctx.putImageData(imageData, 0, 0)
