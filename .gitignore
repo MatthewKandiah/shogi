@@ -1,2 +1,4 @@
 build/
 *.db
+.zig-cache
+zig-out

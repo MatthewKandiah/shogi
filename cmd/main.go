@@ -36,8 +36,13 @@ func main() {
 		}
 	}
 
+	// TODO - put build artefacts in the static dir to simplify this
+	//		not sure yet if I just want to copy-paste the js files into there, or if I want a "build" script that copies the current version into there and auto-increment a version
+	//		moving zig build artefacts there should be as easy as setting a build destination somewhere in the build config!
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
+	http.Handle("/zig-out/", http.StripPrefix("/zig-out/", http.FileServer(http.Dir("zig-out"))))
+
 	http.HandleFunc("/", handler.IndexHandler())
 	http.HandleFunc("/home", handler.HomeHandler(usersDao, sessionsDao))
 	http.HandleFunc("/sign-up", handler.SignUpHandler(usersDao, passwordsDao))
