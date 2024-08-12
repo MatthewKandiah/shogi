@@ -1,6 +1,6 @@
 # shogi
 
-Wanted to play with a (potentially silly) idea. I'm pretty happy running a native application that renders pixel data from a baing array to an SDL2 window. I'm also aware that you can render a pixel array to a canvas in a browser. So can you write a reasonable project that uses the same application code for both a web app and a native app?
+Wanted to play with a (potentially silly) idea. I'm pretty happy running a native application that renders pixel data from a backing array to an SDL2 window. I'm also aware that you can render a pixel array to a canvas in a browser. So can you write a reasonable project that uses the same application code for both a web app and a native app?
 
 ## App
 Correspondence shogi app. You need to be able to:
@@ -8,6 +8,13 @@ Correspondence shogi app. You need to be able to:
 - accept a challenge to start a game
 - actually play a game
 - report the result
+
+Nice to add later:
+- highlight legal moves
+- toggle opponent's pieces being a different colour
+- move back and forward through a game history (both in-progress game, and a review mode after a game)
+- analysis mode where you can try out different lines in a game
+- friends list and messaging (inside and outside of games)
 
 ## Plan
 - [x] Write a very simple backend with sign up, sign in, sign out logic (not necessarily safe or secure, just barely functional)
