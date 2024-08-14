@@ -18,8 +18,12 @@ pub fn build(b: *std.Build) void {
     wasm_exe.entry = .disabled;
     wasm_exe.rdynamic = true;
     wasm_exe.stack_size = std.wasm.page_size;
+    // blindly copied from https://github.com/ziglang/zig/issues/8633#issuecomment-964571048
+    // I do not understand where the value for global_base comes from, or how to check what the value should be
+    // wasm_exe.import_memory = true;
     wasm_exe.initial_memory = std.wasm.page_size * number_of_pages;
     wasm_exe.max_memory = std.wasm.page_size * number_of_pages;
+    // wasm_exe.global_base = 6560;
 
     b.installArtifact(wasm_exe);
 
