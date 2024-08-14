@@ -24,6 +24,9 @@ fetch("zig-out/bin/wasm-main.wasm")
 		console.log(result.instance.exports.length_of_pixel_data())
 		console.log(result.instance.exports.memory.buffer)
 
+		// Our wasm module defines an exported block of linear memory, this reads that whole block in as u8 integers
+		// TODO - what if we want to export multiple blocks of memory? Could export the lot, use exported length and pointer getters, stick the whole
+		//		memory in an ArrayBuffer, then slice out the individual parts into sensible smaller buffers with the right types?
 		let wasmMemory = new Uint8Array(result.instance.exports.memory.buffer)
 
 		for (let i = 0; i < result.instance.exports.length_of_pixel_data(); i++) {
