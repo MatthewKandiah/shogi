@@ -9,7 +9,7 @@ export fn wasm_add(a: i32, b: i32) i32 {
 // so whole board is 82944 pixels
 // each pixel is 4 bytes => pixel array must be 331776 bytes
 // this is slightly above 5 * the WASM page size
-var pixel_data = [_]u8{255} ** 331776;
+var pixel_data = [_]u8{255} ** 331_776;
 export fn init_pixel_data() void {
     for (0..pixel_data.len) |i| {
         switch (i % 4) {
