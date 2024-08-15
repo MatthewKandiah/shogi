@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const number_of_pages = 2;
+const number_of_pages = 7;
 
 pub fn build(b: *std.Build) void {
     const wasm_target = b.resolveTargetQuery(.{

@@ -51,7 +51,7 @@ func HomeView(userName string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><canvas id=\"shogi-canvas\" width=\"800\" height=\"600\" style=\"border :1px solid #000000;\"></canvas><script src=\"js/canvas.js\"></script><hr><a href=\"/sign-out\">Sign Out</a>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</p><canvas id=\"shogi-canvas\" width=\"288\" height=\"288\" style=\"border :1px solid #000000;\"></canvas><script src=\"js/canvas.js\"></script><hr><a href=\"/sign-out\">Sign Out</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
