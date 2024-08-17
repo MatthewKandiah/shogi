@@ -30,9 +30,12 @@ pub fn build(b: *std.Build) void {
     const native_exe = b.addExecutable(.{
         .name = "native-main",
         .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "zig/main-native.zig" } },
-        .target = b.host,
+        .target = b.standardTargetOptions(.{}),
         .optimize = .Debug,
     });
 
+    // TODO - would be nice to vendor in SDL
+    native_exe.linkSystemLibrary("SDL2");
+    native_exe.linkLibC();
     b.installArtifact(native_exe);
 }
