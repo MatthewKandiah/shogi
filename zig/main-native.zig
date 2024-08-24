@@ -7,6 +7,15 @@ const lib = @import("lib.zig");
 pub fn main() !void {
     sdlInit();
     const window = createWindow("Shogi", 288, 288);
+
+    // TODO - need to think about how we handle windows with different pixel formats
+    // one option is we detect the pixel format, and update our image data producers to conform to it
+    // another option is to create a new surface with the desired pixel format and bind that to the window - not sure if this is possible, guessing it might circumvent OS performance optimisations, worth trying
+    // try using SDL_ConvertSurfaceFormat to get a known output format matching what we need for HTML canvas (possibly reversed if endianness is going to be annoying) https://wiki.libsdl.org/SDL2/SDL_ConvertSurfaceFormat
+    const pixel_format = c.SDL_GetWindowPixelFormat(window);
+    const pixel_format_name = c.SDL_GetPixelFormatName(pixel_format);
+    std.debug.print("pixel format = {string}", .{pixel_format_name});
+
     const surface = c.SDL_GetWindowSurface(window) orelse sdlPanic();
     var pixels: [*]u8 = @ptrCast(surface.*.pixels);
     lib.init_pixel_data();
