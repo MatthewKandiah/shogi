@@ -6,18 +6,35 @@ const lib = @import("lib.zig");
 
 pub fn main() !void {
     sdlInit();
-    const window = createWindow("Shogi", 1920, 1080);
+    const window = createWindow("Shogi", 288, 288);
     const surface = c.SDL_GetWindowSurface(window) orelse sdlPanic();
     var pixels: [*]u8 = @ptrCast(surface.*.pixels);
     lib.init_pixel_data();
     for (lib.pixel_data, 0..) |b, i| {
-        std.debug.print("{d}. {d}\n", .{ i, b });
         pixels[i] = b;
     }
     if (c.SDL_UpdateWindowSurface(window) < 0) {
         sdlPanic();
     }
-    while (true) {}
+
+    var running = true;
+    var waiting_for_input = true;
+    var event: c.SDL_Event = undefined;
+    while (waiting_for_input) {
+        while (c.SDL_PollEvent(@ptrCast(&event)) != 0) {
+            if (event.type == c.SDL_QUIT) {
+                waiting_for_input = false;
+                running = false;
+            }
+            if (event.type == c.SDL_KEYDOWN) {
+                waiting_for_input = false;
+                switch (event.key.keysym.sym) {
+                    c.SDLK_ESCAPE => running = false,
+                    else => {},
+                }
+            }
+        }
+    }
 }
 
 fn sdlInit() void {
